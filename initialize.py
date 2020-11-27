@@ -20,6 +20,8 @@ def config_test():
 def truncate_table():
     sql = "truncate entry"
     repository.execute(database=DATABASE, sql=sql)
+    sql = "truncate execution_history_binance"
+    repository.execute(database=DATABASE, sql=sql)
 
 
 def insert_data():

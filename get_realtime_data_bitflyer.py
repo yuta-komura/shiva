@@ -20,10 +20,9 @@ secret = Bitflyer.Api.value.SECRET.value
 
 end_point = 'wss://ws.lightstream.bitflyer.com/json-rpc'
 
-public_channels = ['lightning_executions_FX_BTC_JPY',
-                   'lightning_ticker_FX_BTC_JPY']
+public_channels = ['lightning_ticker_FX_BTC_JPY']
 private_channels = []
-database = "tradingbot"
+DATABASE = "tradingbot"
 # -------------------------------------
 
 
@@ -88,20 +87,6 @@ class bFwebsocket(object):
             channel = params["channel"]
             recept_data = params["message"]
 
-            if channel == "lightning_executions_FX_BTC_JPY":
-                for r in recept_data:
-                    date = r["exec_date"][:26]
-                    date = date.replace("T", " ").replace("Z", "")
-                    date = \
-                        dtdt.strptime(date, '%Y-%m-%d %H:%M:%S.%f')
-                    date = date + dt.timedelta(hours=9)
-                    side = r["side"]
-                    price = r["price"]
-                    size = str(r["size"])
-                    sql = "insert into execution_history values (null,'{date}','{side}',{price},'{size}')"\
-                        .format(date=date, side=side, price=price, size=size)
-                    repository.execute(database=database, sql=sql, log=False)
-
             if channel == "lightning_ticker_FX_BTC_JPY":
                 date = recept_data["timestamp"][:26]
                 date = date.replace("T", " ").replace("Z", "")
@@ -113,7 +98,7 @@ class bFwebsocket(object):
 
                 sql = "update ticker set date='{date}',best_bid={best_bid},best_ask={best_ask}"\
                     .format(date=date, best_bid=best_bid, best_ask=best_ask)
-                repository.execute(database=database, sql=sql, log=False)
+                repository.execute(database=DATABASE, sql=sql, log=False)
 
         def auth(ws):
             now = int(time.time())
@@ -142,11 +127,11 @@ class bFwebsocket(object):
 
 def initialize():
     sql = "select * from ticker"
-    ticker = repository.read_sql(database=database, sql=sql)
+    ticker = repository.read_sql(database=DATABASE, sql=sql)
     if ticker.empty:
         message.info("initialize ticker")
         sql = "insert into ticker values (now(),0,0)"
-        repository.execute(database=database, sql=sql, write=False)
+        repository.execute(database=DATABASE, sql=sql, write=False)
 
 
 if __name__ == '__main__':

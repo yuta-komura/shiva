@@ -4,7 +4,7 @@ import traceback
 import pandas as pd
 
 from lib import bitflyer, message, repository
-from lib.config import Bitflyer, HistoricalPrice
+from lib.config import Bitflyer, HistoricalPrice, Trading
 
 
 def get_historical_price() -> pd.DataFrame or None:
@@ -29,6 +29,8 @@ TIME_FRAME = HistoricalPrice.TIME_FRAME.value
 CHANNEL_WIDTH = HistoricalPrice.CHANNEL_WIDTH.value
 CHANNEL_BAR_NUM = TIME_FRAME * CHANNEL_WIDTH
 
+LAUNCH_HOUR = Trading.LAUNCH_HOUR.value
+
 bitflyer = bitflyer.API(api_key=Bitflyer.Api.value.KEY.value,
                         api_secret=Bitflyer.Api.value.SECRET.value)
 
@@ -47,6 +49,7 @@ while True:
 
     i = len(hp) - 1
     latest = hp.iloc[i]
+    Hour = latest["Date"].hour
 
     High = latest["High"]
     Low = latest["Low"]
@@ -64,7 +67,6 @@ while True:
     invalid_trading = break_high_line and break_low_line
 
     if invalid_trading:
-        message.info("invalid trading")
         time.sleep(1)
         continue
     else:
@@ -72,11 +74,19 @@ while True:
         entry_sell = break_low_line and not has_sell
 
         if entry_buy:
-            save_entry(side="BUY")
+            if Hour in LAUNCH_HOUR:
+                save_entry(side="BUY")
+            else:
+                save_entry(side="CLOSE")
+
             has_buy = True
             has_sell = False
 
         if entry_sell:
-            save_entry(side="SELL")
+            if Hour in LAUNCH_HOUR:
+                save_entry(side="SELL")
+            else:
+                save_entry(side="CLOSE")
+
             has_buy = False
             has_sell = True

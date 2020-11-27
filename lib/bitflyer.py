@@ -19,6 +19,11 @@ class API:
         message.info(side, "order start")
         while True:
             try:
+                has_completed_order = self.__has_changed_side(side=side)
+                if has_completed_order:
+                    message.info(side, "order complete")
+                    return
+
                 self.api.cancelallchildorders(
                     product_code=self.PRODUCT_CODE)
 
@@ -28,7 +33,7 @@ class API:
                 should_close = has_position \
                     and (side != position["side"] and position["size"] >= 0.01)
                 if should_close:
-                    self.close()
+                    self.close(side=side)
                     continue
 
                 price = self.__get_order_price(side=side)
@@ -40,11 +45,7 @@ class API:
                     or self.__has_changed_side(side=side)
                 if has_completed_order:
                     message.info(side, "order complete")
-                    order_side = side
-                    order_size = \
-                        self.__get_order_size(price=price, position_size=0)
-                    order_size = float(math.round_down(order_size, -2))
-                    return order_side, order_size
+                    return
 
                 assert self.is_valid_side(side=side)
                 assert self.is_valid_size(size=size)
@@ -56,9 +57,8 @@ class API:
                 message.error(traceback.format_exc())
                 time.sleep(3)
 
-    def close(self):
+    def close(self, side="CLOSE"):
         message.info("close start")
-        has_position = False
         while True:
             try:
                 self.api.cancelallchildorders(
@@ -67,12 +67,11 @@ class API:
                 position = self.__get_position()
 
                 has_completed_close = \
-                    position["side"] is None or position["size"] < 0.01
+                    position["side"] is None or position["size"] < 0.01 \
+                    or self.__has_changed_side(side=side)
                 if has_completed_close:
                     message.info("close complete")
-                    return has_position
-                else:
-                    has_position = True
+                    return
 
                 side = self.__reverse_side(side=position["side"])
                 size = position["size"]
@@ -84,42 +83,6 @@ class API:
 
                 self.__send_order(side=side, size=size, price=price)
                 time.sleep(1)
-            except Exception:
-                message.error(traceback.format_exc())
-                time.sleep(3)
-
-    def position_validation(self, order_side, order_size):
-        while True:
-            try:
-                time.sleep(120)
-
-                if self.__has_changed_side(side=order_side):
-                    return
-
-                position = self.__get_position()
-                position_side = position["side"]
-                position_size = position["size"]
-
-                if position_side is None \
-                        or order_side != position_side:
-                    message.warning("invalidate position")
-                    self.order(order_side)
-                elif order_size * 0.5 >= position_size:
-                    message.warning("not enough position size")
-                    self.order(order_side)
-                elif order_size * 1.5 <= position_size:
-                    message.warning("close invalidate position size")
-                    side = self.__reverse_side(side=order_side)
-                    size = position_size - order_size
-                    price = self.__get_order_price(side=side)
-
-                    assert self.is_valid_side(side=side)
-                    assert self.is_valid_size(size=size)
-                    assert self.is_valid_price(price=price)
-
-                    self.__send_order(side=side, size=size, price=price)
-                else:
-                    return
             except Exception:
                 message.error(traceback.format_exc())
                 time.sleep(3)
@@ -140,7 +103,7 @@ class API:
                 return True
             latest_side = entry.at[0, "side"]
             if latest_side != side:
-                message.warning("change side from", side, "to", latest_side)
+                message.info("change side from", side, "to", latest_side)
                 return True
             else:
                 return False
@@ -337,16 +300,14 @@ class API:
                     op.price as Open,
                     ba.High as High,
                     ba.Low as Low,
-                    cl.price as Close,
-                    ba.Volume as Volume
+                    cl.price as Close
                 from
                     (
                         select
                             max(price) as High,
                             min(price) as Low,
                             min(id) as open_id,
-                            max(id) as close_id,
-                            sum(size) as Volume
+                            max(id) as close_id
                         from
                             execution_history_binance
                         group by

@@ -4,6 +4,7 @@ from binance.client import Client
 from binance.websockets import BinanceSocketManager
 
 from lib import repository
+from lib.config import Binance
 
 
 def process_message(msg):
@@ -13,17 +14,14 @@ def process_message(msg):
     sql = \
         "insert into execution_history_binance values (null,'{date}','{price}','{size}')"\
         .format(date=date, price=price, size=size)
-    repository.execute(database=database, sql=sql, log=False)
+    repository.execute(database=DATABASE, sql=sql, log=False)
 
 
 if __name__ == '__main__':
-    database = "tradingbot"
+    DATABASE = "tradingbot"
 
-    sql = "truncate execution_history_binance"
-    repository.execute(database=database, sql=sql, log=False)
-
-    api_key = "73okG5NvWTRxyxO8C8EEAs1oQe6kKLXuqtSyy4CFFchZXUaD1x3JKqAFeNoQLIGr"
-    api_secret = "kMGWhaOChKDLYb28bEPrLMveuJSXeXqdL1WhzvaGrkzBTjaTOkPTanhkujBCybBv"
+    api_key = Binance.Api.value.KEY.value
+    api_secret = Binance.Api.value.SECRET.value
     client = Client(api_key, api_secret)
 
     bm = BinanceSocketManager(client)

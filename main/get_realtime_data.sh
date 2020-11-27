@@ -8,6 +8,7 @@ SCRIPT_DIR=$(
 
 . ${SCRIPT_DIR}/venv/bin/activate
 
-python ${SCRIPT_DIR}/get_realtime_data.py
+python ${SCRIPT_DIR}/get_realtime_data_bitflyer.py
+python ${SCRIPT_DIR}/get_realtime_data_binance.py
 
 wait
